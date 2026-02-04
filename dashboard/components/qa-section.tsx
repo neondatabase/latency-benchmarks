@@ -207,7 +207,8 @@ export function QASection() {
                 In addition to HTTP and WebSocket connections via the
                 @neondatabase/serverless driver, this benchmark also measures
                 classic TCP connections using the standard pg library with
-                Vercel's @vercel/functions attachDatabasePool to handle idle connections
+                Vercel's @vercel/functions attachDatabasePool to handle idle
+                connections
               </p>
 
               <h4 className="font-medium mt-3">TCP Connections:</h4>

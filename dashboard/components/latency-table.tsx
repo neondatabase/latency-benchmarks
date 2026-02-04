@@ -18,7 +18,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import type { Database, Function } from "@/lib/schema";
+import type { Function, PublicDatabase } from "@/lib/schema";
 
 interface LatencyData {
   cold: Record<number, Record<number, number>>;
@@ -29,11 +29,11 @@ interface RegionGroup {
   regionLabel: string;
   connectionMethod: string;
   regionCode: string;
-  databases: Database[];
+  databases: PublicDatabase[];
 }
 
 interface LatencyTableProps {
-  databases: Database[];
+  databases: PublicDatabase[];
   functions: Function[];
   latencyData: LatencyData;
   connectionFilter?: string;

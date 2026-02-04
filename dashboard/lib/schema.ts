@@ -83,6 +83,7 @@ export const selectStatSchema = createSelectSchema(stats);
 // TypeScript types
 export type Database = z.infer<typeof selectDatabaseSchema>;
 export type NewDatabase = z.infer<typeof insertDatabaseSchema>;
+export type PublicDatabase = Omit<Database, "connectionUrl" | "neonProjectId">;
 
 export type Function = z.infer<typeof selectFunctionSchema>;
 export type NewFunction = z.infer<typeof insertFunctionSchema>;

@@ -13,10 +13,10 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import type { Database } from "@/lib/schema";
+import type { PublicDatabase } from "@/lib/schema";
 
 interface DatabaseSidebarProps {
-  databases: Database[];
+  databases: PublicDatabase[];
   selectedDatabases: number[];
   onToggleDatabase: (dbId: number) => void;
   onUpdateConnectionFilter?: (filter: string) => void;
@@ -25,7 +25,7 @@ interface DatabaseSidebarProps {
 interface RegionGroup {
   regionLabel: string;
   connectionMethod: string;
-  databases: Database[];
+  databases: PublicDatabase[];
 }
 
 export function DatabaseSidebar({
@@ -91,7 +91,7 @@ export function DatabaseSidebar({
       acc[providerName].push(db);
       return acc;
     },
-    {} as Record<string, Database[]>,
+    {} as Record<string, PublicDatabase[]>,
   );
 
   // For Neon Postgres, first group by connection method, then by region
@@ -108,7 +108,7 @@ export function DatabaseSidebar({
             groups[methodKey].push(db);
             return groups;
           },
-          {} as Record<string, Database[]>,
+          {} as Record<string, PublicDatabase[]>,
         );
 
         // Then for each connection method, group by region
@@ -395,7 +395,7 @@ export function DatabaseSidebar({
                         </div>
                       ))
                     : // Render regular databases for other providers
-                      (items as Database[]).map((db) => (
+                      (items as PublicDatabase[]).map((db) => (
                         <div
                           key={db.id}
                           className={cn(

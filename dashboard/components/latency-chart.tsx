@@ -13,7 +13,7 @@ import {
 } from "recharts";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import type { Database, Function, Stat } from "@/lib/schema";
+import type { Function, PublicDatabase, Stat } from "@/lib/schema";
 
 interface ChartData {
   date: string;
@@ -21,7 +21,7 @@ interface ChartData {
 }
 
 interface LatencyChartProps {
-  database: Database;
+  database: PublicDatabase;
   functions: Function[];
   stats: Stat[];
 }

@@ -13,7 +13,7 @@ import {
 import { DatabaseSidebar } from "@/components/database-sidebar";
 import { LatencyTable } from "@/components/latency-table";
 import { QASection } from "@/components/qa-section";
-import { Database, Function, Stat } from "@/lib/schema";
+import { Function, PublicDatabase, Stat } from "@/lib/schema";
 
 // Import Neon logos
 import logoLight from "../assets/logo.svg";
@@ -35,7 +35,7 @@ interface HistoricalData {
 }
 
 interface BenchmarkDashboardProps {
-  initialDatabases: Database[];
+  initialDatabases: PublicDatabase[];
   initialFunctions: Function[];
   initialStats: AvgStat[];
 }
@@ -279,7 +279,7 @@ function BenchmarkDashboardClient({
 function processLatencyData(
   stats: AvgStat[],
   functions: Function[],
-  databases: Database[],
+  databases: PublicDatabase[],
 ): LatencyData {
   const result: LatencyData = {
     cold: {},
@@ -332,7 +332,7 @@ function processLatencyData(
 function processHistoricalData(
   stats: Stat[],
   functions: Function[],
-  databases: Database[],
+  databases: PublicDatabase[],
 ): HistoricalData {
   const result: HistoricalData = {};
 

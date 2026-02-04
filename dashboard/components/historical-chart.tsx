@@ -13,7 +13,7 @@ import {
   type TooltipProps,
 } from "recharts";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import type { Database, Function, Stat } from "@/lib/schema";
+import type { Function, PublicDatabase, Stat } from "@/lib/schema";
 
 interface HistoricalDataPoint {
   date: string;
@@ -22,7 +22,7 @@ interface HistoricalDataPoint {
 }
 
 interface HistoricalChartProps {
-  database: Database;
+  database: PublicDatabase;
   functions: Function[];
   data: HistoricalDataPoint[];
 }

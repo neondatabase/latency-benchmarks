@@ -6,8 +6,8 @@ import {
   databases,
   functions,
   stats,
-  type Database,
   type Function,
+  type PublicDatabase,
   type Stat,
 } from "./schema";
 
@@ -16,8 +16,18 @@ config({ path: ".env" });
 const sql = neon(process.env.DATABASE_URL!);
 export const db = drizzle(sql);
 
-export async function getAllDatabases(): Promise<Database[]> {
-  return await db.select().from(databases);
+export async function getAllDatabases(): Promise<PublicDatabase[]> {
+  return db
+    .select({
+      id: databases.id,
+      name: databases.name,
+      provider: databases.provider,
+      regionCode: databases.regionCode,
+      regionLabel: databases.regionLabel,
+      functionId: databases.functionId,
+      connectionMethod: databases.connectionMethod,
+    })
+    .from(databases);
 }
 
 export async function getAllFunctions(): Promise<Function[]> {

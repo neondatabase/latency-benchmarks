@@ -8,10 +8,10 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { LatencyChart } from "@/components/latency-chart";
-import type { Database, Function, Stat } from "@/lib/schema";
+import type { Function, PublicDatabase, Stat } from "@/lib/schema";
 
 interface LatencyGraphsProps {
-  databases: Database[];
+  databases: PublicDatabase[];
   functions: Function[];
   stats: Stat[];
 }
