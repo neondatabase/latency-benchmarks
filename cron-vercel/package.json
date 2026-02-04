@@ -9,10 +9,10 @@
     "deploy": "bun scripts/region-deploy.ts"
   },
   "dependencies": {
-    "@neondatabase/serverless": "^1.0.0",
-    "@vercel/functions": "^3.2.0",
+    "@neondatabase/serverless": "^1.0.2",
+    "@vercel/functions": "^3.4.1",
     "dotenv": "^16.5.0",
-    "next": "15.3.1",
+    "next": "^16.1.6",
     "pg": "^8.16.3"
   },
   "devDependencies": {
