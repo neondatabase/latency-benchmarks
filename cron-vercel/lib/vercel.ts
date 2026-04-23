@@ -14,7 +14,6 @@ export const vercelRegionMap: Record<string, string> = {
   "ap-south-1": "bom1", // Mumbai
   "sa-east-1": "gru1", // São Paulo
   "af-south-1": "cpt1", // Cape Town
-  "me-south-1": "dxb1", // Dubai
   "eu-west-3": "cdg1", // Paris
   "ap-east-1": "hkg1", // Hong Kong
   "ap-northeast-3": "kix1", // Osaka

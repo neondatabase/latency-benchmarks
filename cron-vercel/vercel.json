@@ -21,10 +21,6 @@
       "schedule": "17-59/15 * * * *"
     },
     {
-      "path": "/api/dxb1",
-      "schedule": "17-59/15 * * * *"
-    },
-    {
       "path": "/api/fra1",
       "schedule": "17-59/15 * * * *"
     },
