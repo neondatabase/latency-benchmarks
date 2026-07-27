@@ -35,6 +35,22 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 
 ## API Routes
 
-This directory contains example API routes for the headless API app.
+There is one route per Vercel region, named after the region it runs in (`app/api/iad1`, `app/api/fra1`, …). Each one measures latency from that region to every benchmark database assigned to it.
 
 For more details, see [route.js file convention](https://nextjs.org/docs/app/api-reference/file-conventions/route).
+
+## Region pinning
+
+A route only produces meaningful measurements if it actually executes in its own region, so every route is pinned with the `functions` property in `vercel.json`:
+
+```json
+{
+  "functions": {
+    "app/api/fra1/route.ts": { "regions": ["fra1"] }
+  }
+}
+```
+
+Each route also asserts its own placement at runtime and returns a 500 if `VERCEL_REGION` does not match the region it is named after, so a misconfigured deployment fails loudly instead of silently recording latencies from the wrong place.
+
+Adding a region means creating `app/api/<region>/route.ts`, plus a `functions` entry and a `crons` entry in `vercel.json`.

@@ -12,7 +12,7 @@ Visit it here: [latency-benchmarks-dashboard.vercel.app](https://latency-benchma
 ## Setup
 
 1. Run `bun run setup` in the dashboard directory to create the benchmark databases
-2. Run `npm run deploy` in the cron-vercel directory to deploy the cronjob application using the Vercel CLI. This is necessary because we override the build directory with custom region configurations.
+2. Run `npm run deploy` in the cron-vercel directory to deploy the cronjob application. Each route is pinned to its Vercel region through the `functions` property in `cron-vercel/vercel.json`.
 3. Deploy the dashboard application to Vercel.
 
 ## Benchmark Details
