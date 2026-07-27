@@ -11,7 +11,10 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { createClient } from "@neondatabase/neon-js";
+import {
+  NeonPostgrestClient,
+  fetchWithToken,
+} from "@neondatabase/postgrest-js";
 import {
   Card,
   CardContent,
@@ -79,33 +82,50 @@ export function ConnectionMethodBench() {
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
-  const clientRef = useRef<ReturnType<typeof createClient> | null>(null);
-  const signInRef = useRef<Promise<unknown> | null>(null);
+  const clientRef = useRef<NeonPostgrestClient | null>(null);
+  const tokenRef = useRef<{ token: string; expiresAt: number } | null>(null);
+
+  /**
+   * The token comes from our own server rather than a browser sign-in: Neon
+   * Auth only trusts configured origins, and it keeps the demo credentials out
+   * of the client bundle. Queries still go browser → Data API with no server
+   * hop, which is what this method is measuring.
+   */
+  const getAccessToken = useCallback(async () => {
+    const current = tokenRef.current;
+    if (current && current.expiresAt - 60_000 > Date.now()) {
+      return current.token;
+    }
+    const response = await fetch(`${BASE_PATH}/api/bench/token`, {
+      cache: "no-store",
+    });
+    if (!response.ok) {
+      throw new Error("Could not obtain a Data API token");
+    }
+    const minted = (await response.json()) as {
+      token: string;
+      expiresAt: number;
+    };
+    tokenRef.current = minted;
+    return minted.token;
+  }, []);
 
   const getBrowserClient = useCallback(async () => {
-    const authUrl = process.env.NEXT_PUBLIC_BENCH_NEON_AUTH_URL;
     const dataApiUrl = process.env.NEXT_PUBLIC_BENCH_NEON_DATA_API_URL;
-    const email = process.env.NEXT_PUBLIC_BENCH_NEON_AUTH_EMAIL;
-    const password = process.env.NEXT_PUBLIC_BENCH_NEON_AUTH_PASSWORD;
-    if (!authUrl || !dataApiUrl || !email || !password) {
-      throw new Error("Browser Data API credentials are not configured");
+    if (!dataApiUrl) {
+      throw new Error("NEXT_PUBLIC_BENCH_NEON_DATA_API_URL is not configured");
     }
+    // Make sure a token is cached before the timer starts.
+    await getAccessToken();
 
     if (!clientRef.current) {
-      clientRef.current = createClient({
-        auth: { url: authUrl },
-        dataApi: { url: dataApiUrl },
+      clientRef.current = new NeonPostgrestClient({
+        dataApiUrl,
+        options: { global: { fetch: fetchWithToken(getAccessToken) } },
       });
     }
-    if (!signInRef.current) {
-      signInRef.current = clientRef.current.auth.signIn.email({
-        email,
-        password,
-      });
-    }
-    await signInRef.current;
     return clientRef.current;
-  }, []);
+  }, [getAccessToken]);
 
   const runSampleForBrowser = useCallback(async (): Promise<Sample["endToEndMs"]> => {
     const client = await getBrowserClient();

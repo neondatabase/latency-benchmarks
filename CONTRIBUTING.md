@@ -54,11 +54,11 @@ neon-function/      Neon-platform measurement worker
 | `BENCH_DATABASE_URL_UNPOOLED` | dashboard | Direct TCP connection to the same database, used by the `pg.Pool` method. |
 | `BENCH_NEON_AUTH_URL`, `BENCH_NEON_AUTH_EMAIL`, `BENCH_NEON_AUTH_PASSWORD` | dashboard | Neon Auth credentials the server exchanges for a Data API JWT. |
 | `BENCH_NEON_DATA_API_URL` | dashboard | Data API endpoint for the benchmark database. |
-| `NEXT_PUBLIC_BENCH_*` | dashboard (browser) | The same four Neon Auth / Data API values, exposed to the browser so it can query the Data API directly. |
+| `NEXT_PUBLIC_BENCH_NEON_DATA_API_URL` | dashboard (browser) | Data API endpoint, so the browser knows where to send its query. The only bench value exposed to the client. |
 
 > **Two databases.** `DATABASE_URL` is the *control plane* that stores regional latency measurements. `BENCH_DATABASE_URL` is the *benchmark target* the connection-method page queries. They are different Neon projects and must not be swapped.
 >
-> The `NEXT_PUBLIC_BENCH_*` credentials are visible to anyone loading the page. That is deliberate: they belong to a read-only demo account holding 100 rows of synthetic data.
+> **No credentials reach the browser.** The browser cannot sign in to Neon Auth — Better Auth only trusts configured origins, and this app is served from `neon.com`, which returns a 403. It fetches a short-lived JWT from `/api/bench/token` during warm-up instead. That keeps the demo credentials server-side and leaves the measured path unchanged: the query still goes browser → Data API with no server hop.
 
 Pull the real values rather than inventing them:
 

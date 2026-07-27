@@ -149,7 +149,16 @@ export async function queryViaDataApi() {
   if (error) throw new Error(error.message);
 }
 
-/** Warms the token cache so the first measured sample is not a sign-in. */
-export async function warmDataApiToken() {
-  await getAccessToken();
+/**
+ * Mints a Data API JWT for the browser.
+ *
+ * The browser cannot sign in to Neon Auth itself: Better Auth only trusts
+ * origins it is configured with, and this app is served from neon.com. Doing
+ * the exchange here also keeps the demo credentials out of the client bundle.
+ * The measured path is unaffected — the browser still queries the Data API
+ * directly, and this token is fetched once during warm-up.
+ */
+export async function mintBrowserToken() {
+  const jwt = await getAccessToken();
+  return { token: jwt, expiresAt: cachedToken?.expiresAt ?? Date.now() };
 }

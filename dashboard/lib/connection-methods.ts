@@ -29,7 +29,7 @@ export const CONNECTION_METHODS: ConnectionMethod[] = [
     id: "data-api-browser",
     label: "Data API (browser)",
     description:
-      "The browser queries the Data API directly with @neondatabase/neon-js, using a JWT from Neon Auth. No server hop.",
+      "The browser queries the Data API directly with @neondatabase/postgrest-js, using a Neon Auth JWT minted server-side during warm-up. No server hop on the measured query.",
     color: "#0ea5e9",
     endToEndOnly: true,
   },
