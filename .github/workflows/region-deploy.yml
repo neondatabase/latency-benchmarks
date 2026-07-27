@@ -4,6 +4,10 @@ on:
   push:
     branches:
       - main
+    paths:
+      - "cron-vercel/**"
+      - ".github/workflows/region-deploy.yml"
+  workflow_dispatch:
 
 jobs:
   deploy:
@@ -13,21 +17,20 @@ jobs:
       run:
         working-directory: cron-vercel
 
+    env:
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
-          node-version: "18"
+          node-version: "22"
           cache: "npm"
           cache-dependency-path: cron-vercel/package-lock.json
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v1
-        with:
-          bun-version: latest
 
       - name: Install dependencies
         run: npm ci
@@ -35,13 +38,29 @@ jobs:
       - name: Setup Vercel CLI
         run: npm install -g vercel@latest
 
-      - name: Configure Vercel
-        run: |
-          vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+      - name: Pull Vercel project settings
+        run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
 
-      - name: Run region deploy script
-        run: bun scripts/region-deploy.ts
-        env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      # Per-route regions come from the `functions` property in vercel.json,
+      # so this is an ordinary build with no post-processing of the output.
+      - name: Build
+        run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Verify every route is pinned to its own region
+        run: |
+          failed=0
+          for dir in .vercel/output/functions/api/*.func; do
+            route=$(basename "$dir" .func)
+            region=$(node -p "JSON.parse(require('fs').readFileSync('$dir/.vc-config.json','utf8')).regions?.[0] ?? 'unset'")
+            expected=${route%.rsc}
+            if [ "$region" != "$expected" ]; then
+              echo "::error::$route is pinned to '$region', expected '$expected'"
+              failed=1
+            else
+              echo "ok: $route -> $region"
+            fi
+          done
+          exit $failed
+
+      - name: Deploy
+        run: vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}

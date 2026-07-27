@@ -1,72 +1,43 @@
 {
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "functions": {
+    "app/api/arn1/route.ts": { "regions": ["arn1"] },
+    "app/api/bom1/route.ts": { "regions": ["bom1"] },
+    "app/api/cdg1/route.ts": { "regions": ["cdg1"] },
+    "app/api/cle1/route.ts": { "regions": ["cle1"] },
+    "app/api/cpt1/route.ts": { "regions": ["cpt1"] },
+    "app/api/dub1/route.ts": { "regions": ["dub1"] },
+    "app/api/fra1/route.ts": { "regions": ["fra1"] },
+    "app/api/gru1/route.ts": { "regions": ["gru1"] },
+    "app/api/hkg1/route.ts": { "regions": ["hkg1"] },
+    "app/api/hnd1/route.ts": { "regions": ["hnd1"] },
+    "app/api/iad1/route.ts": { "regions": ["iad1"] },
+    "app/api/icn1/route.ts": { "regions": ["icn1"] },
+    "app/api/kix1/route.ts": { "regions": ["kix1"] },
+    "app/api/lhr1/route.ts": { "regions": ["lhr1"] },
+    "app/api/pdx1/route.ts": { "regions": ["pdx1"] },
+    "app/api/sfo1/route.ts": { "regions": ["sfo1"] },
+    "app/api/sin1/route.ts": { "regions": ["sin1"] },
+    "app/api/syd1/route.ts": { "regions": ["syd1"] }
+  },
   "crons": [
-    {
-      "path": "/api/arn1",
-      "schedule": "17-59/15 * * * *"
-    },
-    {
-      "path": "/api/bom1",
-      "schedule": "17-59/15 * * * *"
-    },
-    {
-      "path": "/api/cle1",
-      "schedule": "17-59/15 * * * *"
-    },
-    {
-      "path": "/api/cpt1",
-      "schedule": "17-59/15 * * * *"
-    },
-    {
-      "path": "/api/dub1",
-      "schedule": "17-59/15 * * * *"
-    },
-    {
-      "path": "/api/fra1",
-      "schedule": "17-59/15 * * * *"
-    },
-    {
-      "path": "/api/gru1",
-      "schedule": "17-59/15 * * * *"
-    },
-    {
-      "path": "/api/hkg1",
-      "schedule": "17-59/15 * * * *"
-    },
-    {
-      "path": "/api/hnd1",
-      "schedule": "17-59/15 * * * *"
-    },
-    {
-      "path": "/api/iad1",
-      "schedule": "17-59/15 * * * *"
-    },
-    {
-      "path": "/api/icn1",
-      "schedule": "17-59/15 * * * *"
-    },
-    {
-      "path": "/api/kix1",
-      "schedule": "17-59/15 * * * *"
-    },
-    {
-      "path": "/api/lhr1",
-      "schedule": "17-59/15 * * * *"
-    },
-    {
-      "path": "/api/pdx1",
-      "schedule": "17-59/15 * * * *"
-    },
-    {
-      "path": "/api/sfo1",
-      "schedule": "17-59/15 * * * *"
-    },
-    {
-      "path": "/api/sin1",
-      "schedule": "17-59/15 * * * *"
-    },
-    {
-      "path": "/api/syd1",
-      "schedule": "17-59/15 * * * *"
-    }
+    { "path": "/api/arn1", "schedule": "17-59/15 * * * *" },
+    { "path": "/api/bom1", "schedule": "17-59/15 * * * *" },
+    { "path": "/api/cdg1", "schedule": "17-59/15 * * * *" },
+    { "path": "/api/cle1", "schedule": "17-59/15 * * * *" },
+    { "path": "/api/cpt1", "schedule": "17-59/15 * * * *" },
+    { "path": "/api/dub1", "schedule": "17-59/15 * * * *" },
+    { "path": "/api/fra1", "schedule": "17-59/15 * * * *" },
+    { "path": "/api/gru1", "schedule": "17-59/15 * * * *" },
+    { "path": "/api/hkg1", "schedule": "17-59/15 * * * *" },
+    { "path": "/api/hnd1", "schedule": "17-59/15 * * * *" },
+    { "path": "/api/iad1", "schedule": "17-59/15 * * * *" },
+    { "path": "/api/icn1", "schedule": "17-59/15 * * * *" },
+    { "path": "/api/kix1", "schedule": "17-59/15 * * * *" },
+    { "path": "/api/lhr1", "schedule": "17-59/15 * * * *" },
+    { "path": "/api/pdx1", "schedule": "17-59/15 * * * *" },
+    { "path": "/api/sfo1", "schedule": "17-59/15 * * * *" },
+    { "path": "/api/sin1", "schedule": "17-59/15 * * * *" },
+    { "path": "/api/syd1", "schedule": "17-59/15 * * * *" }
   ]
 }

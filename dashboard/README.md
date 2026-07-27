@@ -1,36 +1,58 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Dashboard
 
-## Getting Started
+The Next.js app that renders the latency grid, and the home of the database schema, migrations, and provisioning scripts.
 
-First, run the development server:
+In production it is served under `neon.com/demos/regional-latency`.
+
+## Development
 
 ```bash
+npm install
+vercel env pull .env.local --environment production
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+`next dev` runs without a `basePath`, so the page is at `http://localhost:3000/`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+A **production** build applies `basePath` and `assetPrefix` from `NEXT_PUBLIC_REWRITE_PREFIX`, so after:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run build && npm run start
+```
 
-## Learn More
+the page is at `http://localhost:3000/demos/regional-latency`. A 404 at `/` after a production build is expected.
 
-To learn more about Next.js, take a look at the following resources:
+## Rendering
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+The page is statically generated with `revalidate = 900`, so it refreshes at most every 15 minutes — matching the cron interval. It queries the control plane at build and revalidation time, which means **a build fails if `DATABASE_URL` is wrong or its credentials are stale**. That is the intended behaviour: a dashboard that silently renders nothing would be worse.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Each cell is the mean latency over the **last 30 days** (`getLast30DaysAvgLatency` in `lib/db.ts`), grouped by function, database, and query type — not the latest sample. A cell is `N/A` only when there is no data in that window.
 
-## Deploy on Vercel
+## Scripts
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+| Command | What it does |
+|---|---|
+| `npm run dev` | Dev server |
+| `npm run build` / `npm run start` | Production build and serve |
+| `npm run fmt` | Prettier |
+| `npm run db:generate` | Generate a Drizzle migration from `lib/schema.ts` |
+| `npm run db:push` | Apply the schema to `DATABASE_URL` |
+| `npm run db:studio` | Browse the database |
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### Provisioning
+
+```bash
+NEON_ORG_ID=<neon-org-id> bun scripts/setup.ts
+```
+
+Creates every `functions` row, provisions one Neon project per (region × connection method) via `neonctl`, and inserts the matching `databases` rows. Intended for standing the benchmark up from nothing — it inserts rather than reconciles, so running it against a populated control plane produces duplicates.
+
+```bash
+bun scripts/cleanup.ts
+```
+
+**Destructive.** Deletes every benchmark Neon project, every `databases` and `functions` row, and all of `stats`. This tears the whole benchmark down; it is not a maintenance tool.
+
+## Schema
+
+`lib/schema.ts` defines `databases`, `functions`, and `stats`. `stats` has foreign keys into the other two, so their rows must be updated in place rather than recreated — see [CONTRIBUTING.md](../CONTRIBUTING.md#never-recreate-database-rows).

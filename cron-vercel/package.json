@@ -6,7 +6,7 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "deploy": "bun scripts/region-deploy.ts"
+    "deploy": "vercel deploy --prod"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.0.2",
