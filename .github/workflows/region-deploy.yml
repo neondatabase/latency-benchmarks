@@ -46,21 +46,8 @@ jobs:
       - name: Build
         run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
 
-      - name: Verify every route is pinned to its own region
-        run: |
-          failed=0
-          for dir in .vercel/output/functions/api/*.func; do
-            route=$(basename "$dir" .func)
-            region=$(node -p "JSON.parse(require('fs').readFileSync('$dir/.vc-config.json','utf8')).regions?.[0] ?? 'unset'")
-            expected=${route%.rsc}
-            if [ "$region" != "$expected" ]; then
-              echo "::error::$route is pinned to '$region', expected '$expected'"
-              failed=1
-            else
-              echo "ok: $route -> $region"
-            fi
-          done
-          exit $failed
+      - name: Verify every route is pinned to its declared region
+        run: node scripts/verify-regions.mjs
 
       - name: Deploy
         run: vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}

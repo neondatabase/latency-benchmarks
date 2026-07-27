@@ -13,7 +13,7 @@ import { z } from "zod";
 
 // Create enums
 export const queryTypeEnum = pgEnum("query_type", ["cold", "hot"]);
-export const platformEnum = pgEnum("platform", ["vercel"]);
+export const platformEnum = pgEnum("platform", ["vercel", "neon"]);
 export const connectionMethodEnum = pgEnum("connection_method", [
   "http",
   "ws",

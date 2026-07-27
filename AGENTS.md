@@ -54,6 +54,14 @@ Also note the Vercel CLI defaults new Production and Preview variables to *sensi
 
 **After any state-changing Neon API call, read the state back and assert it changed.** When you need the status code, use `curl` with `-w "%{http_code}"` and a personal API key.
 
+### Two platforms, one schema
+
+`functions.platform` distinguishes `vercel` from `neon`. The dashboard groups and filters entirely on that column, so a new platform must exist in the Postgres enum *and* in `PLATFORM_LABELS` / `PLATFORM_ORDER` in `latency-table.tsx`. A platform present in the database but missing from those constants silently disappears from the UI: `availablePlatforms` is derived from `PLATFORM_ORDER`, not from the data.
+
+Adding an enum value needs a migration — `ALTER TYPE ... ADD VALUE` — and cannot be done by editing the schema file alone.
+
+The Neon Function reads `CONTROL_PLANE_URL`, not `DATABASE_URL`. Neon injects `DATABASE_URL` automatically, pointing at the function's own host branch, which is empty. Using it would connect successfully to the wrong database.
+
 ## Verification standard
 
 Compilation and type checks prove nothing here. Before claiming something works:

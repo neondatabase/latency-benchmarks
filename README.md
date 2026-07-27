@@ -1,43 +1,46 @@
 # Neon Latency Benchmarks
 
-Continuously measures query latency from Vercel serverless regions to Neon Postgres databases around the world.
+Continuously measures query latency from serverless compute to Neon Postgres databases around the world, across two compute platforms: **Vercel Functions** and **Neon Functions**.
 
 Live at **[neon.com/demos/regional-latency](https://neon.com/demos/regional-latency)**.
 
-Every 15 minutes, a serverless function in each Vercel region opens a connection to a dedicated Neon database in each AWS region and times a `SELECT 1`. The results are written to a central Postgres database and rendered as a latency grid.
+Every 15 minutes, a serverless function in each region opens a connection to a dedicated Neon database in each AWS region and times a `SELECT 1`. The results are written to a central Postgres database and rendered as a latency grid you can filter by platform.
 
 ## How it works
 
 ```
-                    ┌──────────────────────────────────┐
-                    │   cron-vercel (Vercel project)   │
-                    │                                  │
-   Vercel Cron ───► │  /api/iad1   pinned to iad1      │
-   every 15 min     │  /api/fra1   pinned to fra1      │
-                    │  /api/sin1   pinned to sin1      │
-                    │  … 18 regions total              │
-                    └───────┬──────────────────┬───────┘
-                            │                  │
-             1. read config │                  │ 2. SELECT 1, timed
-                            │                  │    (cold, then hot)
-                            ▼                  ▼
-                 ┌────────────────────┐   ┌──────────────────────┐
-                 │   control plane    │   │  228 benchmark DBs   │
-                 │   (Neon project)   │   │  (Neon projects)     │
-                 │                    │   │                      │
-                 │  databases         │   │  empty; exist only   │
-                 │  functions         │   │  to be connected to  │
-                 │  stats  ◄──────────┼───┤                      │
-                 └─────────┬──────────┘   └──────────────────────┘
-                           │ 3. write measurements
-                           │
-                           │ 4. read + aggregate
-                           ▼
-                 ┌────────────────────────────────────┐
-                 │  dashboard (Vercel project)        │
-                 │  Next.js, ISR, revalidate 15m      │
-                 │  → neon.com/demos/regional-latency │
-                 └────────────────────────────────────┘
+   Vercel Cron ──┬──────────────────────────────────────────────┐
+   every 15 min  │                                              │
+                 ▼                                              ▼
+   ┌──────────────────────────────────┐        ┌────────────────────────────┐
+   │   cron-vercel (Vercel project)   │        │  /api/neonfn (trigger only)│
+   │                                  │        └─────────────┬──────────────┘
+   │  /api/iad1   pinned to iad1      │                      │ authenticated
+   │  /api/fra1   pinned to fra1      │                      │ HTTP call
+   │  … 18 regions total              │                      ▼
+   └───────┬──────────────────┬───────┘        ┌────────────────────────────┐
+           │                  │                │  neon-function             │
+           │                  │                │  Neon Functions, us-east-2 │
+           │                  │                └──────┬──────────────┬──────┘
+           │                  │                       │              │
+   read config                │  SELECT 1, timed      │              │
+           │                  │  (cold, then hot)     │              │
+           ▼                  ▼                       ▼              ▼
+   ┌────────────────────┐   ┌────────────────────────────────────────────┐
+   │   control plane    │   │   240 benchmark databases (Neon projects)  │
+   │   (Neon project)   │   │                                            │
+   │  databases         │   │   228 for Vercel   ·   12 for Neon         │
+   │  functions         │   │   empty; exist only to be connected to     │
+   │  stats  ◄──────────┼───┤                                            │
+   └─────────┬──────────┘   └────────────────────────────────────────────┘
+             │ write measurements
+             │ read + aggregate
+             ▼
+   ┌────────────────────────────────────┐
+   │  dashboard (Vercel project)        │
+   │  Next.js, ISR, revalidate 15m      │
+   │  → neon.com/demos/regional-latency │
+   └────────────────────────────────────┘
 ```
 
 The benchmark databases hold no data. Their only job is to accept a connection from a known region so the round trip can be timed.
@@ -46,8 +49,18 @@ The benchmark databases hold no data. Their only job is to accept a connection f
 
 | Path | What it is |
 |---|---|
-| [`cron-vercel/`](./cron-vercel/) | One API route per Vercel region, each pinned to that region and invoked by Vercel Cron. Performs the measurements. |
+| [`cron-vercel/`](./cron-vercel/) | One API route per Vercel region, each pinned to that region and invoked by Vercel Cron. Performs the Vercel-side measurements, and triggers the Neon Function. |
+| [`neon-function/`](./neon-function/) | The measurement worker running on Neon Functions, plus the scripts that provision its databases and deploy it. |
 | [`dashboard/`](./dashboard/) | Next.js app that renders the latency grid. Also owns the database schema, migrations, and the setup/cleanup scripts. |
+
+## Platforms
+
+| Platform | Regions | Compute |
+|---|---|---|
+| Vercel Functions | 18 | Vercel serverless, one function pinned per region |
+| Neon Functions | 1 (`us-east-2`) | Node.js 24 on Neon compute, next to the database |
+
+Neon Functions are only offered in `aws-us-east-2` during beta, so that platform contributes a single region. Both platforms measure against the same target regions using the same methodology, so the rows are directly comparable.
 
 ## Data model
 
@@ -55,7 +68,7 @@ The control plane database has three tables, defined in [`dashboard/lib/schema.t
 
 | Table | Rows | Purpose |
 |---|---|---|
-| `functions` | one per Vercel region | Where measurements are taken *from*. |
+| `functions` | one per platform region | Where measurements are taken *from*. `platform` is `vercel` or `neon`. |
 | `databases` | one per (function × AWS region × connection method) | Where measurements are taken *to*. Holds the connection string and Neon project id of each benchmark database. |
 | `stats` | one per measurement | `date_time`, `function_id`, `database_id`, `latency_ms`, `query_type`. |
 
@@ -63,7 +76,7 @@ The control plane database has three tables, defined in [`dashboard/lib/schema.t
 
 ### Coverage
 
-Each Vercel region measures against 12 benchmark databases:
+Each function region measures against 12 benchmark databases:
 
 - **8 AWS regions over HTTP** — `us-east-1`, `us-east-2`, `us-west-2`, `ap-southeast-1`, `ap-southeast-2`, `eu-central-1`, `eu-west-2`, `sa-east-1`
 - **`us-east-1` and `us-west-2` additionally over WebSocket and TCP**, to compare the three connection methods against the same target

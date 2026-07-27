@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { Fragment, useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   Table,
@@ -42,6 +42,40 @@ interface LatencyTableProps {
 
 type QueryType = "both" | "cold" | "hot";
 type RegionFilter = "all" | "matching";
+type PlatformFilter = "all" | "neon" | "vercel";
+
+const PLATFORM_LABELS: Record<string, string> = {
+  neon: "Neon Functions",
+  vercel: "Vercel Serverless",
+};
+
+/** Neon first: it is the platform this benchmark is published to showcase. */
+const PLATFORM_ORDER = ["neon", "vercel"];
+
+function platformLabel(platform: string) {
+  return PLATFORM_LABELS[platform] ?? platform;
+}
+
+/**
+ * Label beside its controls on wider screens, stacked above them on narrow
+ * ones. Buttons wrap rather than overflowing the card.
+ */
+function FilterRow({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3">
+      <span className="text-xs font-medium text-muted-foreground sm:w-36 sm:shrink-0">
+        {label}
+      </span>
+      <div className="flex flex-wrap items-center gap-2">{children}</div>
+    </div>
+  );
+}
 
 export function LatencyTable(props: LatencyTableProps) {
   return (
@@ -75,6 +109,11 @@ function LatencyTableClient({
       : param === "all"
         ? "all"
         : "matching"; // Default is 'matching' now
+  });
+
+  const [platformFilter, setPlatformFilter] = useState<PlatformFilter>(() => {
+    const param = searchParams.get("platform");
+    return param === "neon" || param === "vercel" ? param : "all";
   });
 
   // Use the prop value or fall back to URL parameter
@@ -133,6 +172,10 @@ function LatencyTableClient({
         newParams.set("regions", regionParamValue);
       }
 
+      if ((searchParams.get("platform") ?? "all") !== platformFilter) {
+        newParams.set("platform", platformFilter);
+      }
+
       if (searchParams.get("connection") !== connectionFilter) {
         newParams.set("connection", connectionFilter);
       }
@@ -161,6 +204,10 @@ function LatencyTableClient({
         newParams.set("regions", regionParamValue);
       }
 
+      if ((searchParams.get("platform") ?? "all") !== platformFilter) {
+        newParams.set("platform", platformFilter);
+      }
+
       if (!newParams.has("databases")) {
         newParams.set("databases", "all");
       }
@@ -173,6 +220,7 @@ function LatencyTableClient({
   }, [
     queryType,
     regionFilter,
+    platformFilter,
     connectionFilter,
     searchParams,
     onUpdateConnectionFilter,
@@ -308,24 +356,41 @@ function LatencyTableClient({
     return db && db.regionCode.toLowerCase() === fn.regionCode.toLowerCase();
   };
 
-  // Filter functions based on region filter
-  const getFilteredFunctions = () => {
-    if (regionFilter === "all") {
-      return sortedFunctions;
-    }
-    // Get unique database region codes
+  // Filter functions by platform, then by region
+  const visibleFunctions = (() => {
+    const byPlatform =
+      platformFilter === "all"
+        ? sortedFunctions
+        : sortedFunctions.filter((fn) => fn.platform === platformFilter);
+
+    if (regionFilter === "all") return byPlatform;
+
     const dbRegionCodes = new Set(
       databases.map((db) => db.regionCode.toLowerCase()),
     );
-    // Filter functions that match any database region
-    return sortedFunctions.filter((fn) =>
+    return byPlatform.filter((fn) =>
       dbRegionCodes.has(fn.regionCode.toLowerCase()),
     );
-  };
+  })();
+
+  const availablePlatforms = PLATFORM_ORDER.filter((platform) =>
+    sortedFunctions.some((fn) => fn.platform === platform),
+  );
+
+  // One section per platform, so the table reads as a comparison rather than a
+  // single undifferentiated list of regions.
+  const platformGroups = availablePlatforms
+    .map((platform) => ({
+      platform,
+      functions: visibleFunctions.filter((fn) => fn.platform === platform),
+    }))
+    .filter((group) => group.functions.length > 0);
 
   return (
-    <div className="space-y-3 min-w-full w-fit">
-      <div className="flex flex-col gap-3">
+    <div className="space-y-4">
+      {/* Controls sit outside the table's horizontal scroll container so they
+          wrap to the viewport instead of scrolling off with the grid. */}
+      <div className="flex flex-col gap-4">
         <div className="flex items-center space-x-1">
           <div className="h-3 w-3 rounded-sm bg-green-100 dark:bg-green-900"></div>
           <span className="text-xs text-muted-foreground">
@@ -333,8 +398,29 @@ function LatencyTableClient({
           </span>
         </div>
 
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-2">
+        {availablePlatforms.length > 1 && (
+          <FilterRow label="Platform">
+            <Button
+              variant={platformFilter === "all" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setPlatformFilter("all")}
+            >
+              All Platforms
+            </Button>
+            {availablePlatforms.map((platform) => (
+              <Button
+                key={platform}
+                variant={platformFilter === platform ? "default" : "outline"}
+                size="sm"
+                onClick={() => setPlatformFilter(platform as PlatformFilter)}
+              >
+                {platformLabel(platform)}
+              </Button>
+            ))}
+          </FilterRow>
+        )}
+
+        <FilterRow label="Queries">
             <Button
               variant={queryType === "both" ? "default" : "outline"}
               size="sm"
@@ -377,10 +463,9 @@ function LatencyTableClient({
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
-          </div>
-        </div>
+        </FilterRow>
 
-        <div className="flex items-center gap-2">
+        <FilterRow label="Function regions">
           <Button
             variant={regionFilter === "all" ? "default" : "outline"}
             size="sm"
@@ -395,9 +480,9 @@ function LatencyTableClient({
           >
             Matching Regions Only
           </Button>
-        </div>
+        </FilterRow>
 
-        <div className="flex items-center gap-2">
+        <FilterRow label="Connection">
           <Button
             variant={connectionFilter === "all" ? "default" : "outline"}
             size="sm"
@@ -426,10 +511,10 @@ function LatencyTableClient({
           >
             TCP Only
           </Button>
-        </div>
+        </FilterRow>
       </div>
-      <div className="max-h-[80vh]">
-        <div className="rounded-md border">
+      <div className="max-h-[80vh] overflow-x-auto">
+        <div className="rounded-md border min-w-full w-fit">
           <Table className="table-auto">
             <TableHeader className="sticky top-0 bg-background z-20">
               <TableRow>
@@ -555,26 +640,42 @@ function LatencyTableClient({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {/* Vercel Serverless section header */}
-              <TableRow className="bg-muted">
-                <TableCell
-                  colSpan={
-                    1 +
-                    filteredRegionGroups.length * (queryType === "both" ? 2 : 1)
-                  }
-                  className="left-0 bg-muted z-30"
-                >
-                  <span className="font-bold text-base md:text-lg">
-                    Vercel Serverless
-                  </span>
-                  {regionFilter === "matching" && (
-                    <span className="ml-2 text-xs md:text-sm text-muted-foreground">
-                      (Showing only regions matching selected databases)
-                    </span>
-                  )}
-                </TableCell>
-              </TableRow>
-              {getFilteredFunctions().map((fn) => (
+              {platformGroups.length === 0 && (
+                <TableRow>
+                  <TableCell
+                    colSpan={
+                      1 +
+                      filteredRegionGroups.length *
+                        (queryType === "both" ? 2 : 1)
+                    }
+                    className="py-10 text-center text-sm text-muted-foreground"
+                  >
+                    No function regions match the current filters.
+                  </TableCell>
+                </TableRow>
+              )}
+              {platformGroups.map((group) => (
+                <Fragment key={group.platform}>
+                  <TableRow className="bg-muted hover:bg-muted">
+                    <TableCell
+                      colSpan={
+                        1 +
+                        filteredRegionGroups.length *
+                          (queryType === "both" ? 2 : 1)
+                      }
+                      className="left-0 bg-muted z-30"
+                    >
+                      <span className="font-bold text-base md:text-lg">
+                        {platformLabel(group.platform)}
+                      </span>
+                      {regionFilter === "matching" && (
+                        <span className="ml-2 text-xs md:text-sm text-muted-foreground">
+                          (Showing only regions matching selected databases)
+                        </span>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                  {group.functions.map((fn) => (
                 <TableRow key={fn.id}>
                   <TableCell className="sticky left-0 bg-background z-30 border-r">
                     <div className="font-normal text-[10px] md:text-xs">
@@ -638,6 +739,8 @@ function LatencyTableClient({
                     return cells;
                   })}
                 </TableRow>
+                  ))}
+                </Fragment>
               ))}
             </TableBody>
           </Table>

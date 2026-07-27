@@ -1,0 +1,258 @@
+{
+  "id": "b0d6cbc9-59e8-4831-849d-97884db2afce",
+  "prevId": "11c51466-0d77-4dd8-87d1-9906b1598aee",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.databases": {
+      "name": "databases",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "provider": {
+          "name": "provider",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "region_code": {
+          "name": "region_code",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "region_label": {
+          "name": "region_label",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "function_id": {
+          "name": "function_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "connection_method": {
+          "name": "connection_method",
+          "type": "connection_method",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "connection_url": {
+          "name": "connection_url",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "neon_project_id": {
+          "name": "neon_project_id",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "databases_function_id_functions_id_fk": {
+          "name": "databases_function_id_functions_id_fk",
+          "tableFrom": "databases",
+          "tableTo": "functions",
+          "columnsFrom": [
+            "function_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "databases_function_id_connection_method_region_code_unique": {
+          "name": "databases_function_id_connection_method_region_code_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "function_id",
+            "connection_method",
+            "region_code"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.functions": {
+      "name": "functions",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "region_code": {
+          "name": "region_code",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "region_label": {
+          "name": "region_label",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "platform": {
+          "name": "platform",
+          "type": "platform",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.stats": {
+      "name": "stats",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "date_time": {
+          "name": "date_time",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "function_id": {
+          "name": "function_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "database_id": {
+          "name": "database_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "latency_ms": {
+          "name": "latency_ms",
+          "type": "numeric(10, 2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "query_type": {
+          "name": "query_type",
+          "type": "query_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "stats_function_id_functions_id_fk": {
+          "name": "stats_function_id_functions_id_fk",
+          "tableFrom": "stats",
+          "tableTo": "functions",
+          "columnsFrom": [
+            "function_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "stats_database_id_databases_id_fk": {
+          "name": "stats_database_id_databases_id_fk",
+          "tableFrom": "stats",
+          "tableTo": "databases",
+          "columnsFrom": [
+            "database_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {
+    "public.connection_method": {
+      "name": "connection_method",
+      "schema": "public",
+      "values": [
+        "http",
+        "ws",
+        "tcp"
+      ]
+    },
+    "public.platform": {
+      "name": "platform",
+      "schema": "public",
+      "values": [
+        "vercel",
+        "neon"
+      ]
+    },
+    "public.query_type": {
+      "name": "query_type",
+      "schema": "public",
+      "values": [
+        "cold",
+        "hot"
+      ]
+    }
+  },
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}

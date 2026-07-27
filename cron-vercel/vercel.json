@@ -18,7 +18,8 @@
     "app/api/pdx1/route.ts": { "regions": ["pdx1"] },
     "app/api/sfo1/route.ts": { "regions": ["sfo1"] },
     "app/api/sin1/route.ts": { "regions": ["sin1"] },
-    "app/api/syd1/route.ts": { "regions": ["syd1"] }
+    "app/api/syd1/route.ts": { "regions": ["syd1"] },
+    "app/api/neonfn/route.ts": { "regions": ["iad1"] }
   },
   "crons": [
     { "path": "/api/arn1", "schedule": "17-59/15 * * * *" },
@@ -38,6 +39,7 @@
     { "path": "/api/pdx1", "schedule": "17-59/15 * * * *" },
     { "path": "/api/sfo1", "schedule": "17-59/15 * * * *" },
     { "path": "/api/sin1", "schedule": "17-59/15 * * * *" },
-    { "path": "/api/syd1", "schedule": "17-59/15 * * * *" }
+    { "path": "/api/syd1", "schedule": "17-59/15 * * * *" },
+    { "path": "/api/neonfn", "schedule": "17-59/15 * * * *" }
   ]
 }
