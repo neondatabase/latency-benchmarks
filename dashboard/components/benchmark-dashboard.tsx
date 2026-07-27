@@ -2,7 +2,6 @@
 
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import Image from "next/image";
 import {
   Card,
   CardContent,
@@ -14,12 +13,8 @@ import { DatabaseSidebar } from "@/components/database-sidebar";
 import { LatencyTable } from "@/components/latency-table";
 import { QASection } from "@/components/qa-section";
 import { Function, PublicDatabase, Stat } from "@/lib/schema";
-
-// Import Neon logos
-import logoLight from "../assets/logo.svg";
-import logoDark from "../assets/logo-dark.svg";
 import { AvgStat } from "@/lib/db";
-import { ThemeToggle } from "./theme-toggle";
+import { BenchNav } from "./bench-nav";
 
 interface LatencyData {
   cold: Record<string, Record<string, number>>;
@@ -204,35 +199,7 @@ function BenchmarkDashboardClient({
 
       <div className="flex-1 p-4 md:p-6" style={{ minWidth: 0 }}>
         <div className="space-y-6">
-          <div className="flex flex-col gap-4">
-            {/* Left padding on mobile clears the fixed sidebar toggle. */}
-            <div className="flex items-center pl-12 md:pl-0">
-              <h1 className="text-2xl md:text-3xl font-bold mr-auto">
-                Latency Benchmarks
-              </h1>
-              <ThemeToggle className="ml-4" />
-              <div className="flex flex-col md:flex-row md:items-center ml-4">
-                <div>
-                  <Image
-                    className="h-6 w-auto dark:hidden"
-                    src={logoLight}
-                    alt="Neon logo"
-                    width={88}
-                    height={24}
-                    priority
-                  />
-                  <Image
-                    className="hidden h-6 w-auto dark:block"
-                    src={logoDark}
-                    alt="Neon logo"
-                    width={88}
-                    height={24}
-                    priority
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
+          <BenchNav title="Regional Latency" offsetForSidebar />
 
           <Card>
             <CardHeader className="pb-3">

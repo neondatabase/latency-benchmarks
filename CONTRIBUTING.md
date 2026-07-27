@@ -50,6 +50,15 @@ neon-function/      Neon-platform measurement worker
 | `CONTROL_PLANE_URL` | neon-function | Control plane connection string. Deliberately **not** `DATABASE_URL`, which Neon injects automatically and points at the function's own host branch. |
 | `FUNCTION_SECRET` | neon-function | Shared secret for invoking the function. Set to the same value as `CRON_SECRET` so the trigger route can forward it. |
 | `NEON_API_KEY` | provisioning and deploy scripts | A personal Neon API key. |
+| `BENCH_DATABASE_URL` | dashboard | Pooled connection to the **connection-method benchmark** database. A different Neon project from the control plane — see below. |
+| `BENCH_DATABASE_URL_UNPOOLED` | dashboard | Direct TCP connection to the same database, used by the `pg.Pool` method. |
+| `BENCH_NEON_AUTH_URL`, `BENCH_NEON_AUTH_EMAIL`, `BENCH_NEON_AUTH_PASSWORD` | dashboard | Neon Auth credentials the server exchanges for a Data API JWT. |
+| `BENCH_NEON_DATA_API_URL` | dashboard | Data API endpoint for the benchmark database. |
+| `NEXT_PUBLIC_BENCH_*` | dashboard (browser) | The same four Neon Auth / Data API values, exposed to the browser so it can query the Data API directly. |
+
+> **Two databases.** `DATABASE_URL` is the *control plane* that stores regional latency measurements. `BENCH_DATABASE_URL` is the *benchmark target* the connection-method page queries. They are different Neon projects and must not be swapped.
+>
+> The `NEXT_PUBLIC_BENCH_*` credentials are visible to anyone loading the page. That is deliberate: they belong to a read-only demo account holding 100 rows of synthetic data.
 
 Pull the real values rather than inventing them:
 
@@ -138,6 +147,16 @@ NEON_API_KEY=… NEON_FUNCTION_PROJECT_ID=… NEON_FUNCTION_BRANCH_ID=… \
 ```
 
 `provision` is idempotent: it reuses projects by name and upserts database rows, so an interrupted run can be repeated.
+
+## Adding a benchmark
+
+The app is a set of benchmarks behind a shared tab bar. To add one:
+
+1. Create `dashboard/app/<slug>/page.tsx` and render `<BenchNav title="…" />` at the top.
+2. Add `{ href: "/<slug>", label: "…" }` to `BENCHES` in `dashboard/components/bench-nav.tsx`. That is the only place the tab list lives.
+3. Put server work in route handlers under `dashboard/app/api/…` and keep any long-lived clients at module scope so warm functions reuse them.
+
+The regional benchmark reads pre-aggregated history at build time; the connection-method benchmark measures live in the browser. Both shapes are fine — pick whichever matches the question the benchmark answers.
 
 ### Adding a platform
 

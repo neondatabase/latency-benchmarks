@@ -1,8 +1,17 @@
-# Neon Latency Benchmarks
+# Neon Benchmarks
 
-Continuously measures query latency from serverless compute to Neon Postgres databases around the world, across two compute platforms: **Vercel Functions** and **Neon Functions**.
+The home for Neon's public latency benchmarks. Each benchmark is a tab in one app.
 
 Live at **[neon.com/demos/regional-latency](https://neon.com/demos/regional-latency)**.
+
+| Benchmark | What it answers | How it runs |
+|---|---|---|
+| **Regional latency** | How far is my database, from where my code runs? | Scheduled every 15 minutes, 30-day averages |
+| **Connection methods** | Which way of talking to Postgres is fastest? | On demand, in your browser, when you click Run |
+
+## Regional latency
+
+Continuously measures query latency from serverless compute to Neon Postgres databases around the world, across two compute platforms: **Vercel Functions** and **Neon Functions**.
 
 Every 15 minutes, a serverless function in each region opens a connection to a dedicated Neon database in each AWS region and times a `SELECT 1`. The results are written to a central Postgres database and rendered as a latency grid you can filter by platform.
 
@@ -84,6 +93,23 @@ Each function region measures against 12 benchmark databases:
 Each measurement is taken twice in a row: **cold** (the first query, which may include a compute cold start, since Neon computes suspend when idle) and **hot** (immediately after, on the warm connection).
 
 The grid does not show the most recent measurement. It shows the **mean over the last 30 days**, grouped by function, database, and query type, so a single slow sample does not move a cell. A cell reads `N/A` when there are no measurements in that window at all — which usually means the function is not running, not that latency is unmeasurable.
+
+## Connection methods
+
+An interactive benchmark comparing four ways of running the *same* query against the *same* Neon database, all within `us-east-1`:
+
+| Method | Path |
+|---|---|
+| Data API (browser) | Browser → Data API, with a Neon Auth JWT. No server hop. |
+| Data API (server) | Route handler → Data API, reusing a cached JWT. |
+| Serverless driver + Drizzle | Route handler → `@neondatabase/serverless` over HTTP. |
+| node-postgres + Drizzle | Route handler → `pg.Pool` over direct TCP, kept warm with `attachDatabasePool`. |
+
+You choose the sample count and how many queries each sample issues back to back — the waterfall setting, which shows how per-round-trip overhead compounds. Results are reported as end-to-end time (what the browser sees) or server-only time (what the route handler spends), with a chart per sample and avg/median/p95 summary.
+
+Each sample runs every method concurrently so they see the same database conditions, and a warm-up round runs first so sign-in and cold starts don't distort the first result.
+
+Unlike the regional benchmark, nothing here is stored — it measures live, from wherever you are, and the numbers depend on your own connection.
 
 ## Infrastructure
 

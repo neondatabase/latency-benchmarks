@@ -62,6 +62,14 @@ Adding an enum value needs a migration — `ALTER TYPE ... ADD VALUE` — and ca
 
 The Neon Function reads `CONTROL_PLANE_URL`, not `DATABASE_URL`. Neon injects `DATABASE_URL` automatically, pointing at the function's own host branch, which is empty. Using it would connect successfully to the wrong database.
 
+### Two databases, easy to confuse
+
+`DATABASE_URL` is the **control plane** holding 2.5M regional latency measurements. `BENCH_DATABASE_URL` is the **connection-method benchmark target**, a separate Neon project with 100 rows of synthetic `employees` data.
+
+They are unrelated projects. Pointing one at the other will connect successfully and behave wrongly: the regional dashboard would render empty, or the connection benchmark would start querying production measurement history.
+
+Neon Auth issues ~15 minute JWTs. The server caches and refreshes them; if you remove that cache, every sample measures a sign-in round trip instead of a query, and the Data API method looks ~15x slower than it is. Server-side sign-in also requires an `Origin` header — Better Auth rejects requests without one.
+
 ## Verification standard
 
 Compilation and type checks prove nothing here. Before claiming something works:
