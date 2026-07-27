@@ -21,12 +21,20 @@ dashboard/          Next.js UI + schema + migrations + setup/cleanup scripts
   scripts/setup.ts  provisions functions, benchmark projects, and database rows
   scripts/cleanup.ts DESTRUCTIVE - deletes every benchmark project and all history
 
-cron-vercel/        measurement functions
+cron-vercel/        Vercel-platform measurement functions
   app/api/<region>/ one route per Vercel region
+  app/api/neonfn/   trigger only - forwards a cron tick to the Neon Function
   lib/meta-db.ts    reads config from, and writes measurements to, the control plane
   lib/bench-db.ts   opens a connection to a benchmark database and times SELECT 1
   lib/measure.ts    shared request handler with the region guard
   vercel.json       per-route region pinning + cron schedules
+  scripts/verify-regions.mjs  asserts the build matches vercel.json (runs in CI)
+
+neon-function/      Neon-platform measurement worker
+  src/index.ts      the function handler
+  src/regions.ts    target regions and project naming
+  scripts/provision.ts  creates its benchmark projects and database rows
+  scripts/deploy.ts     bundles and deploys via @neon/sdk
 ```
 
 ## Environment variables
@@ -36,8 +44,12 @@ cron-vercel/        measurement functions
 | `DATABASE_URL` | dashboard, cron-vercel | Pooled connection string for the **control plane** database, not a benchmark database. |
 | `NEXT_PUBLIC_REWRITE_PREFIX` | dashboard | Sets `basePath` and `assetPrefix` in production. Currently `/demos/regional-latency`. |
 | `CRON_SECRET` | cron-vercel | Vercel Cron sends this as `Authorization: Bearer …`. Requests without it get a 401. |
-| `NEON_ORG_ID` | `dashboard/scripts/setup.ts` | The Neon organization new benchmark projects are created in. |
+| `NEON_ORG_ID` | provisioning scripts | The Neon organization new benchmark projects are created in. |
 | `VERCEL_REGION` | cron-vercel | Injected by Vercel. Each route asserts this matches its own name. |
+| `NEON_FUNCTION_URL` | cron-vercel | Invocation URL of the deployed Neon Function, called by `/api/neonfn`. |
+| `CONTROL_PLANE_URL` | neon-function | Control plane connection string. Deliberately **not** `DATABASE_URL`, which Neon injects automatically and points at the function's own host branch. |
+| `FUNCTION_SECRET` | neon-function | Shared secret for invoking the function. Set to the same value as `CRON_SECRET` so the trigger route can forward it. |
+| `NEON_API_KEY` | provisioning and deploy scripts | A personal Neon API key. |
 
 Pull the real values rather than inventing them:
 
@@ -111,6 +123,31 @@ When a benchmark database moves or is replaced, **update the existing row in pla
 4. Insert a `functions` row and its `databases` rows, creating one Neon project per target region and connection method.
 
 Removing a region is the reverse, but leave the `functions` row alone unless you also intend to delete its history.
+
+`scripts/verify-regions.mjs` catches all three mistakes — a wrong region, a `functions` entry whose path does not match any built route, and a route with a region but no cron. Run it after `vercel build`; CI runs it before every deploy.
+
+## Working on the Neon Functions platform
+
+Everything for this platform lives in `neon-function/`. See its [README](./neon-function/README.md) for the full workflow. In short:
+
+```bash
+cd neon-function
+NEON_API_KEY=… NEON_ORG_ID=… CONTROL_PLANE_URL=… npm run provision
+NEON_API_KEY=… NEON_FUNCTION_PROJECT_ID=… NEON_FUNCTION_BRANCH_ID=… \
+  CONTROL_PLANE_URL=… FUNCTION_SECRET=… npm run deploy
+```
+
+`provision` is idempotent: it reuses projects by name and upserts database rows, so an interrupted run can be repeated.
+
+### Adding a platform
+
+The dashboard derives everything from the `platform` column on `functions`, so a new platform needs:
+
+1. a value added to the `platform` enum in `dashboard/lib/schema.ts`, plus a generated migration
+2. a label in `PLATFORM_LABELS` and an entry in `PLATFORM_ORDER` in `dashboard/components/latency-table.tsx`
+3. `functions` and `databases` rows, and something that invokes the measurement on a schedule
+
+The platform filter, the per-platform table sections, and the counts in the card description all follow from those.
 
 ## Deployment
 

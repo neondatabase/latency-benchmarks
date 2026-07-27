@@ -202,11 +202,14 @@ function BenchmarkDashboardClient({
         onUpdateConnectionFilter={updateConnectionFilter}
       />
 
-      <div className="flex-1 p-6" style={{ minWidth: 0 }}>
+      <div className="flex-1 p-4 md:p-6" style={{ minWidth: 0 }}>
         <div className="space-y-6">
           <div className="flex flex-col gap-4">
-            <div className="flex items-center">
-              <h1 className="text-3xl font-bold mr-auto">Latency Benchmarks</h1>
+            {/* Left padding on mobile clears the fixed sidebar toggle. */}
+            <div className="flex items-center pl-12 md:pl-0">
+              <h1 className="text-2xl md:text-3xl font-bold mr-auto">
+                Latency Benchmarks
+              </h1>
               <ThemeToggle className="ml-4" />
               <div className="flex flex-col md:flex-row md:items-center ml-4">
                 <div>
@@ -253,11 +256,13 @@ function BenchmarkDashboardClient({
                 {connectionFilter !== "all"
                   ? ` databases using ${connectionFilter === "http" ? "@neondatabase/serverless HTTP" : "@neondatabase/serverless WebSocket"} connections`
                   : " databases"}{" "}
-                and {initialFunctions.length} serverless functions
+                and {initialFunctions.length} serverless functions across{" "}
+                {new Set(initialFunctions.map((fn) => fn.platform)).size}{" "}
+                platforms
               </CardDescription>
             </CardHeader>
             <CardContent className="p-0">
-              <div className="overflow-x-auto m-4">
+              <div className="m-4">
                 <LatencyTable
                   databases={filteredDatabases}
                   functions={initialFunctions}
