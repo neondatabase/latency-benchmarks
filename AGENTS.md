@@ -81,7 +81,7 @@ Compilation and type checks prove nothing here. Before claiming something works:
 
 ## Cost awareness
 
-Each of the 18 regions wakes its 12 benchmark computes every 15 minutes, and each compute is pinned at 1 CU. Fixing the region bug increased compute roughly 18x. Anything that adds regions, adds target databases, or shortens the cron interval multiplies recurring spend — call it out before doing it.
+Each of the 18 Vercel regions wakes its 12 benchmark computes every 15 minutes, each of the 4 Neon Functions regions wakes its 24, and each compute is pinned at 1 CU. Fixing the region bug increased compute roughly 18x. Anything that adds regions, adds target databases, or shortens the cron interval multiplies recurring spend — call it out before doing it.
 
 ## Things that look broken but are not
 
