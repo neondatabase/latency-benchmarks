@@ -1,19 +1,9 @@
 /**
- * Creates or repairs the whole Neon Functions platform, one function region at a
- * time, entirely through @neon/sdk:
+ * Creates or repairs the Neon Functions platform through @neon/sdk. See
+ * ../README.md#setup.
  *
- *   1. the host project the function runs in
- *   2. the `neon` row in `functions`
- *   3. one benchmark project per target region and connection method, and the
- *      matching `databases` rows
- *   4. the function deployment, with FUNCTION_REGION set for that region
- *   5. the schedule trigger that runs it every 15 minutes
- *
- * Safe to re-run. Projects are matched by name, `functions` and `databases` rows
- * are updated in place, and the trigger is matched by name, so an interrupted
- * run can simply be repeated. Pass region codes to limit the run:
- *
- *   npm run setup -- us-east-1 eu-central-1
+ * `functions` and `databases` rows are updated in place and never recreated:
+ * `stats` references both.
  *
  * Required env: NEON_API_KEY, NEON_ORG_ID, CONTROL_PLANE_URL, FUNCTION_SECRET
  */
