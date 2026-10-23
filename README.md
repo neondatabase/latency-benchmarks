@@ -18,27 +18,25 @@ Every 15 minutes, a serverless function in each region opens a connection to a d
 ## How it works
 
 ```
-   Vercel Cron ──┬──────────────────────────────────────────────┐
-   every 15 min  │                                              │
-                 ▼                                              ▼
+   Vercel Cron                                  Neon Function Triggers
+   every 15 min                                 every 15 min, one per region
+        │                                                │
+        ▼                                                ▼
    ┌──────────────────────────────────┐        ┌────────────────────────────┐
-   │   cron-vercel (Vercel project)   │        │  /api/neonfn (trigger only)│
-   │                                  │        └─────────────┬──────────────┘
-   │  /api/iad1   pinned to iad1      │                      │ authenticated
-   │  /api/fra1   pinned to fra1      │                      │ HTTP call
-   │  … 18 regions total              │                      ▼
-   └───────┬──────────────────┬───────┘        ┌────────────────────────────┐
-           │                  │                │  neon-function             │
-           │                  │                │  Neon Functions, us-east-2 │
-           │                  │                └──────┬──────────────┬──────┘
+   │   cron-vercel (Vercel project)   │        │  neon-function             │
+   │                                  │        │  one host project per      │
+   │  /api/iad1   pinned to iad1      │        │  Neon Functions region     │
+   │  /api/fra1   pinned to fra1      │        │  … 4 regions total         │
+   │  … 18 regions total              │        │                            │
+   └───────┬──────────────────┬───────┘        └──────┬──────────────┬──────┘
            │                  │                       │              │
    read config                │  SELECT 1, timed      │              │
            │                  │  (cold, then hot)     │              │
            ▼                  ▼                       ▼              ▼
    ┌────────────────────┐   ┌────────────────────────────────────────────┐
-   │   control plane    │   │   240 benchmark databases (Neon projects)  │
+   │   control plane    │   │   324 benchmark databases (Neon projects)  │
    │   (Neon project)   │   │                                            │
-   │  databases         │   │   228 for Vercel   ·   12 for Neon         │
+   │  databases         │   │   228 for Vercel   ·   96 for Neon         │
    │  functions         │   │   empty; exist only to be connected to     │
    │  stats  ◄──────────┼───┤                                            │
    └─────────┬──────────┘   └────────────────────────────────────────────┘
@@ -58,8 +56,8 @@ The benchmark databases hold no data. Their only job is to accept a connection f
 
 | Path | What it is |
 |---|---|
-| [`cron-vercel/`](./cron-vercel/) | One API route per Vercel region, each pinned to that region and invoked by Vercel Cron. Performs the Vercel-side measurements, and triggers the Neon Function. |
-| [`neon-function/`](./neon-function/) | The measurement worker running on Neon Functions, plus the scripts that provision its databases and deploy it. |
+| [`cron-vercel/`](./cron-vercel/) | One API route per Vercel region, each pinned to that region and invoked by Vercel Cron. Performs the Vercel-side measurements. |
+| [`neon-function/`](./neon-function/) | The measurement worker running on Neon Functions, plus `npm run setup`, which creates or repairs every Neon-side project, row, deployment, and trigger through `@neon/sdk`. |
 | [`dashboard/`](./dashboard/) | Next.js app that renders the latency grid. Also owns the database schema, migrations, and the setup/cleanup scripts. |
 
 ## Platforms
@@ -67,9 +65,9 @@ The benchmark databases hold no data. Their only job is to accept a connection f
 | Platform | Regions | Compute |
 |---|---|---|
 | Vercel Functions | 18 | Vercel serverless, one function pinned per region |
-| Neon Functions | 1 (`us-east-2`) | Node.js 24 on Neon compute, next to the database |
+| Neon Functions | 4 (`us-east-1`, `us-east-2`, `eu-central-1`, `ap-southeast-1`) | Node.js 24 on Neon compute, next to the database |
 
-Neon Functions are only offered in `aws-us-east-2` during beta, so that platform contributes a single region. Both platforms measure against the same target regions using the same methodology, so the rows are directly comparable.
+Neon Functions covers the regions where it is available today. Both platforms measure against the same target regions using the same methodology, so the rows are directly comparable.
 
 ## Data model
 
@@ -85,10 +83,10 @@ The control plane database has three tables, defined in [`dashboard/lib/schema.t
 
 ### Coverage
 
-Each function region measures against 12 benchmark databases:
+Both platforms target the same 8 AWS regions: `us-east-1`, `us-east-2`, `us-west-2`, `ap-southeast-1`, `ap-southeast-2`, `eu-central-1`, `eu-west-2`, `sa-east-1`.
 
-- **8 AWS regions over HTTP** — `us-east-1`, `us-east-2`, `us-west-2`, `ap-southeast-1`, `ap-southeast-2`, `eu-central-1`, `eu-west-2`, `sa-east-1`
-- **`us-east-1` and `us-west-2` additionally over WebSocket and TCP**, to compare the three connection methods against the same target
+- **Vercel Functions** — each region measures 12 benchmark databases: all 8 over HTTP, plus `us-east-1` and `us-west-2` over WebSocket and TCP.
+- **Neon Functions** — each region measures 24 benchmark databases: all 8 over HTTP, WebSocket, and TCP.
 
 Each measurement is taken twice in a row: **cold** (the first query, which may include a compute cold start, since Neon computes suspend when idle) and **hot** (immediately after, on the warm connection).
 
@@ -126,7 +124,7 @@ If you are an AI coding agent, read **[AGENTS.md](./AGENTS.md)** first — it do
 ## Known gaps
 
 - **`me-south-1` / `dxb1` is stale.** The `functions` table still has a row for Dubai, but the route was removed and Vercel no longer runs it. Its 12 `databases` rows will never receive measurements and show as permanent `N/A` under "All Function Regions".
-- **Cost scales with regions.** Each of the 18 regions wakes its 12 benchmark computes every 15 minutes. Adding a region adds real, recurring compute spend.
+- **Cost scales with regions.** Each of the 18 Vercel regions wakes its 12 benchmark computes every 15 minutes, and each of the 4 Neon Functions regions wakes its 24. Adding a region adds real, recurring compute spend.
 
 ## License
 

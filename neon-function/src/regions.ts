@@ -1,11 +1,15 @@
 /**
- * Neon Functions are only offered in aws-us-east-2 during beta, so this
- * platform contributes exactly one function region.
+ * Regions where Neon Functions is available. Each gets its own host project,
+ * because a function runs in the region of the project hosting it.
  */
-export const NEON_FUNCTION_REGION = {
-  code: "us-east-2",
-  label: "Columbus, USA (East) - us-east-2",
-} as const;
+export const NEON_FUNCTION_REGIONS = [
+  { code: "us-east-1", label: "Washington, D.C., USA (East) - us-east-1" },
+  { code: "us-east-2", label: "Columbus, USA (East) - us-east-2" },
+  { code: "eu-central-1", label: "Frankfurt, Germany (Central EU) - eu-central-1" },
+  { code: "ap-southeast-1", label: "Singapore (Southeast Asia) - ap-southeast-1" },
+] as const;
+
+export type NeonFunctionRegion = (typeof NEON_FUNCTION_REGIONS)[number];
 
 /** Target regions, matching the set the Vercel platform measures against. */
 export const AWS_REGIONS = [
@@ -19,20 +23,18 @@ export const AWS_REGIONS = [
   { code: "sa-east-1", label: "AWS South America East 1 (São Paulo)" },
 ] as const;
 
-/** Regions that additionally get WebSocket and TCP targets. */
-export const MULTI_METHOD_REGIONS = ["us-east-1", "us-west-2"] as const;
+export const CONNECTION_METHODS = ["http", "ws", "tcp"] as const;
 
-export type ConnectionMethod = "http" | "ws" | "tcp";
+export type ConnectionMethod = (typeof CONNECTION_METHODS)[number];
 
-export function targetsForRegion(regionCode: string): ConnectionMethod[] {
-  return (MULTI_METHOD_REGIONS as readonly string[]).includes(regionCode)
-    ? ["http", "ws", "tcp"]
-    : ["http"];
+export function hostProjectName(functionRegion: string): string {
+  return `benchmarking-neon-functions-host-${functionRegion}`;
 }
 
 export function benchProjectName(
-  regionCode: string,
+  functionRegion: string,
+  targetRegion: string,
   method: ConnectionMethod,
 ): string {
-  return `benchmarking-from-neon-${NEON_FUNCTION_REGION.code}-to-${regionCode}-via-${method}`;
+  return `benchmarking-from-neon-${functionRegion}-to-${targetRegion}-via-${method}`;
 }

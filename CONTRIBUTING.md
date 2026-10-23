@@ -23,7 +23,6 @@ dashboard/          Next.js UI + schema + migrations + setup/cleanup scripts
 
 cron-vercel/        Vercel-platform measurement functions
   app/api/<region>/ one route per Vercel region
-  app/api/neonfn/   trigger only - forwards a cron tick to the Neon Function
   lib/meta-db.ts    reads config from, and writes measurements to, the control plane
   lib/bench-db.ts   opens a connection to a benchmark database and times SELECT 1
   lib/measure.ts    shared request handler with the region guard
@@ -32,9 +31,8 @@ cron-vercel/        Vercel-platform measurement functions
 
 neon-function/      Neon-platform measurement worker
   src/index.ts      the function handler
-  src/regions.ts    target regions and project naming
-  scripts/provision.ts  creates its benchmark projects and database rows
-  scripts/deploy.ts     bundles and deploys via @neon/sdk
+  src/regions.ts    function regions, target regions, connection methods, project naming
+  scripts/setup.ts  creates or repairs every Neon-side project, row, deployment, and trigger via @neon/sdk
 ```
 
 ## Environment variables
@@ -46,10 +44,10 @@ neon-function/      Neon-platform measurement worker
 | `CRON_SECRET` | cron-vercel | Vercel Cron sends this as `Authorization: Bearer …`. Requests without it get a 401. |
 | `NEON_ORG_ID` | provisioning scripts | The Neon organization new benchmark projects are created in. |
 | `VERCEL_REGION` | cron-vercel | Injected by Vercel. Each route asserts this matches its own name. |
-| `NEON_FUNCTION_URL` | cron-vercel | Invocation URL of the deployed Neon Function, called by `/api/neonfn`. |
 | `CONTROL_PLANE_URL` | neon-function | Control plane connection string. Deliberately **not** `DATABASE_URL`, which Neon injects automatically and points at the function's own host branch. |
-| `FUNCTION_SECRET` | neon-function | Shared secret for invoking the function. Set to the same value as `CRON_SECRET` so the trigger route can forward it. |
-| `NEON_API_KEY` | provisioning and deploy scripts | A personal Neon API key. |
+| `FUNCTION_SECRET` | neon-function | Shared secret for invoking the function by hand. Scheduled runs come from Neon Function Triggers and do not use it. |
+| `FUNCTION_REGION` | neon-function | The region a deployment runs in. Set per deployment by `npm run setup`. |
+| `NEON_API_KEY` | provisioning scripts | A personal Neon API key. |
 | `BENCH_DATABASE_URL` | dashboard | Pooled connection to the **connection-method benchmark** database. A different Neon project from the control plane — see below. |
 | `BENCH_DATABASE_URL_UNPOOLED` | dashboard | Direct TCP connection to the same database, used by the `pg.Pool` method. |
 | `BENCH_NEON_AUTH_URL`, `BENCH_NEON_AUTH_EMAIL`, `BENCH_NEON_AUTH_PASSWORD` | dashboard | Neon Auth credentials the server exchanges for a Data API JWT. |
@@ -141,12 +139,12 @@ Everything for this platform lives in `neon-function/`. See its [README](./neon-
 
 ```bash
 cd neon-function
-NEON_API_KEY=… NEON_ORG_ID=… CONTROL_PLANE_URL=… npm run provision
-NEON_API_KEY=… NEON_FUNCTION_PROJECT_ID=… NEON_FUNCTION_BRANCH_ID=… \
-  CONTROL_PLANE_URL=… FUNCTION_SECRET=… npm run deploy
+NEON_API_KEY=… NEON_ORG_ID=… CONTROL_PLANE_URL=… FUNCTION_SECRET=… npm run setup
 ```
 
-`provision` is idempotent: it reuses projects by name and upserts database rows, so an interrupted run can be repeated.
+`setup` handles every Neon Functions region in `src/regions.ts`: host project, `functions` row, 24 benchmark projects and `databases` rows, deployment, and schedule trigger. It is idempotent: it reuses projects and the trigger by name and updates rows in place, so an interrupted run can be repeated. Pass region codes (`npm run setup -- us-east-1`) to limit a run.
+
+To add a region once Neon Functions supports it, add it to `NEON_FUNCTION_REGIONS` and run `npm run setup -- <region>`.
 
 ## Adding a benchmark
 

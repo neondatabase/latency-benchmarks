@@ -1,6 +1,8 @@
+import { attachDatabasePool } from "@neon/functions";
+import { parseTriggerInvocation } from "@neon/functions/triggers";
 import { Pool } from "pg";
 import { measureLatency } from "./measure";
-import { NEON_FUNCTION_REGION, type ConnectionMethod } from "./regions";
+import type { ConnectionMethod } from "./regions";
 
 /**
  * Long-lived pool for the control plane, created once at module scope as the
@@ -14,6 +16,7 @@ const controlPlane = new Pool({
   connectionString: process.env.CONTROL_PLANE_URL,
   max: 3,
 });
+attachDatabasePool(controlPlane);
 
 interface DatabaseRow {
   id: number;
@@ -22,17 +25,15 @@ interface DatabaseRow {
   connection_url: string;
 }
 
-async function runBenchmark() {
+async function runBenchmark(functionRegion: string) {
   const fnResult = await controlPlane.query<{ id: number; region_label: string }>(
     `SELECT id, region_label FROM functions
      WHERE platform = 'neon' AND region_code = $1`,
-    [NEON_FUNCTION_REGION.code],
+    [functionRegion],
   );
   const fn = fnResult.rows[0];
   if (!fn) {
-    throw new Error(
-      `no 'neon' function registered for region ${NEON_FUNCTION_REGION.code}`,
-    );
+    throw new Error(`no 'neon' function registered for region ${functionRegion}`);
   }
 
   const { rows: databases } = await controlPlane.query<DatabaseRow>(
@@ -84,23 +85,41 @@ async function record(
   );
 }
 
+/**
+ * A scheduled run arrives as a Neon Function Trigger delivery. The Functions
+ * proxy strips client-supplied `x-neon-*` headers, so that header can only
+ * come from Neon. Manual runs authenticate with the shared secret instead.
+ */
+async function authorize(request: Request, secret: string): Promise<Response | null> {
+  if (request.headers.has("x-neon-trigger-invocation-id")) {
+    const parsed = await parseTriggerInvocation(request);
+    if (parsed.ok) return null;
+    return new Response(parsed.error, {
+      status: parsed.error === "invalid_body" ? 400 : 401,
+    });
+  }
+  if (request.headers.get("authorization") !== `Bearer ${secret}`) {
+    return new Response("Unauthorized", { status: 401 });
+  }
+  return null;
+}
+
 export default {
   async fetch(request: Request): Promise<Response> {
     const secret = process.env.FUNCTION_SECRET;
-    if (!secret) {
-      console.error("FUNCTION_SECRET is not set");
-      return Response.json({ error: "Internal Server Error" }, { status: 500 });
-    }
-    if (request.headers.get("authorization") !== `Bearer ${secret}`) {
-      return new Response("Unauthorized", { status: 401 });
-    }
-    if (!process.env.CONTROL_PLANE_URL) {
-      console.error("CONTROL_PLANE_URL is not set");
+    const functionRegion = process.env.FUNCTION_REGION;
+    if (!secret || !functionRegion || !process.env.CONTROL_PLANE_URL) {
+      console.error(
+        "FUNCTION_SECRET, FUNCTION_REGION, and CONTROL_PLANE_URL must all be set",
+      );
       return Response.json({ error: "Internal Server Error" }, { status: 500 });
     }
 
+    const rejected = await authorize(request, secret);
+    if (rejected) return rejected;
+
     try {
-      const result = await runBenchmark();
+      const result = await runBenchmark(functionRegion);
       return Response.json(result, { status: result.success ? 200 : 207 });
     } catch (error) {
       console.error("benchmark run failed:", error);
@@ -108,7 +127,3 @@ export default {
     }
   },
 };
-
-process.on("SIGINT", () => {
-  controlPlane.end().then(() => process.exit(0));
-});

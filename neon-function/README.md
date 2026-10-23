@@ -2,17 +2,21 @@
 
 The measurement worker that runs on **Neon Functions**, Neon's serverless compute, so the benchmark can compare Neon compute against Vercel compute using the same method and the same targets.
 
-It is one function on Node.js 24, deployed to a branch of a dedicated Neon project. On each invocation it reads its configuration from the control plane, times a `SELECT 1` against each of its benchmark databases twice (cold, then hot), and writes the results back to `stats`.
+It is one function on Node.js 24, deployed once per Neon Functions region, each to the default branch of its own host project (a function runs in the region of the project hosting it). On each invocation it reads its configuration from the control plane, times a `SELECT 1` against each of its 24 benchmark databases twice (cold, then hot), and writes the results back to `stats`.
 
-## Why the platform is a single region
+## Coverage
 
-Neon Functions are only offered in `aws-us-east-2` during beta, and a function runs in the region of the project hosting it. So this platform contributes exactly one function region, against the same eight target regions the Vercel platform measures.
+[`src/regions.ts`](./src/regions.ts) is the single source for what gets measured:
 
-Adding a region later is a one-line change in `src/regions.ts` plus a re-run of `provision.ts`.
+- `NEON_FUNCTION_REGIONS`: where the function runs: `us-east-1`, `us-east-2`, `eu-central-1`, `ap-southeast-1`
+- `AWS_REGIONS`: the 8 target regions, the same set the Vercel platform measures
+- `CONNECTION_METHODS`: `http`, `ws`, `tcp`, all three for every target
+
+Every function region gets one benchmark project per target region and connection method: 4 × 8 × 3 = 96 projects.
 
 ## Scheduling
 
-Neon Functions have no scheduler. The Vercel cron project drives this one on the same 15-minute cadence through `cron-vercel/app/api/neonfn`, which does nothing but forward an authenticated request. The measurement itself happens entirely on Neon compute.
+Each deployment has a Neon Function Trigger named `benchmark` on cron `17-59/15 * * * *`, the same minutes the Vercel crons use. Trigger deliveries are authenticated by the `x-neon-trigger-invocation-id` header, which the Functions proxy strips from client requests. Manual runs authenticate with `Authorization: Bearer $FUNCTION_SECRET`.
 
 ## Connection handling
 
@@ -23,35 +27,50 @@ Two deliberately different strategies:
 
 ## Environment
 
+Set on each deployment by `scripts/setup.ts`:
+
 | Variable | Purpose |
 |---|---|
 | `CONTROL_PLANE_URL` | Pooled connection string for the control plane. **Not** `DATABASE_URL`, which Neon injects automatically and which points at this function's own host branch. |
-| `FUNCTION_SECRET` | Shared secret. Requests without a matching `Authorization: Bearer` get a 401 before any database work. |
+| `FUNCTION_SECRET` | Shared secret for manual runs. Requests with neither a trigger header nor a matching `Authorization: Bearer` get a 401 before any database work. |
+| `FUNCTION_REGION` | The region this deployment runs in. Selects its `functions` row. |
 
-Both are set on the deployment by `scripts/deploy.ts`.
+## Setup
 
-## Scripts
-
-Both take the same env as above plus `NEON_API_KEY`.
+One idempotent script creates or repairs everything, entirely through [`@neon/sdk`](https://neon.com/docs/reference/typescript-sdk):
 
 ```bash
-# Create the benchmark projects and register them in the control plane.
-# Idempotent: existing projects are reused and database rows are upserted.
-NEON_ORG_ID=<org> CONTROL_PLANE_URL=<url> npm run provision
-
-# Bundle with esbuild and deploy, then poll until live.
-NEON_FUNCTION_PROJECT_ID=<project> NEON_FUNCTION_BRANCH_ID=<branch> \
-  CONTROL_PLANE_URL=<url> FUNCTION_SECRET=<secret> npm run deploy
+NEON_API_KEY=… NEON_ORG_ID=… CONTROL_PLANE_URL=… FUNCTION_SECRET=… npm run setup
 ```
 
-Both use [`@neon/sdk`](https://neon.com/docs/reference/typescript-sdk); `deploy` also uses `buildFunctionBundle` from `@neon/config-runtime`, which produces exactly the archive the deploy endpoint expects.
+For each function region it:
 
-`provision.ts` is the Neon-platform counterpart to `dashboard/scripts/setup.ts`, with one important difference: it **upserts** rather than inserts, so re-running it after an interrupted run repairs the state instead of duplicating it.
+1. creates or reuses the host project `benchmarking-neon-functions-host-<region>`
+2. inserts or updates the `functions` row
+3. creates or reuses the 24 benchmark projects `benchmarking-from-neon-<region>-to-<target>-via-<method>` and upserts their `databases` rows
+4. bundles and deploys the function with `FUNCTION_REGION` set, and waits for the deployment to complete
+5. creates or updates the `benchmark` schedule trigger
+
+Projects are matched by name, rows are updated in place, and the trigger is matched by name, so an interrupted run can simply be repeated. Rerun it after any change to `src/` to redeploy every region.
+
+Pass region codes to limit a run, for example after adding a region to `NEON_FUNCTION_REGIONS`:
+
+```bash
+npm run setup -- eu-central-1
+```
+
+```text
+eu-central-1
+  host project … created
+  functions row id=…
+  benchmark databases: 24 (24 projects created)
+  deployed https://br-…-latencybench.compute.….eu-central-1.aws.neon.tech/
+  trigger created (next run …)
+```
 
 ## Invoking by hand
 
 ```bash
-neon functions get latencybench --project-id <project> --branch <branch>
 curl -H "authorization: Bearer $FUNCTION_SECRET" "<invocation_url>"
 ```
 
